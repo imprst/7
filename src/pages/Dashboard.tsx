@@ -22,18 +22,20 @@ import type { ComplianceStatus, ContractStatus, FinancialSummary } from '../type
 export default function Dashboard() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [complianceAlerts, setComplianceAlerts] = useState<ComplianceStatus[]>([]);
   const [activeContracts, setActiveContracts] = useState<ContractStatus[]>([]);
   const [financialData, setFinancialData] = useState<FinancialSummary | null>(null);
   const [subscriptionTier, setSubscriptionTier] = useState('pro');
+  const [hasProfile, setHasProfile] = useState(true);
 
   useEffect(() => {
     if (user) {
-      loadDashboardData();
+      checkProfileAndLoadData();
     }
   }, [user]);
 
-  const loadDashboardData = async () => {
+  const checkProfileAndLoadData = async () => {
     try {
       setLoading(true);
 
@@ -44,13 +46,17 @@ export default function Dashboard() {
         .eq('user_id', user?.id)
         .maybeSingle();
 
-      if (profileError) throw profileError;
+      if (profileError && profileError.code !== 'PGRST116') {
+        throw profileError;
+      }
 
       // If no contractor profile, redirect to onboarding
       if (!profileData) {
-        window.location.href = '/onboarding';
+        setHasProfile(false);
         return;
       }
+
+      setHasProfile(true);
 
       // Load compliance alerts (tax reminders)
       const { data: reminders } = await supabase
@@ -128,8 +134,8 @@ export default function Dashboard() {
       const { data: subscription } = await supabase
         .from('contractor_subscriptions')
         .select('tier')
-        .eq('contractor_id', user?.id)
-        .single();
+        .eq('contractor_id', profileData.id)
+        .maybeSingle();
 
       if (subscription) {
         setSubscriptionTier(subscription.tier);
@@ -137,10 +143,32 @@ export default function Dashboard() {
 
     } catch (error) {
       console.error('Error loading dashboard data:', error);
+      setError(error instanceof Error ? error.message : 'Failed to load dashboard');
     } finally {
       setLoading(false);
     }
   };
+
+  // If no contractor profile, show onboarding prompt
+  if (!hasProfile) {
+    return (
+      <div className="min-h-screen pt-20 pb-12 px-4 bg-gradient-to-b from-slate-950 via-blue-950 to-slate-950 flex items-center justify-center">
+        <div className="max-w-md w-full bg-gradient-to-br from-blue-950/40 to-cyan-950/20 border border-blue-500/20 rounded-xl p-8 text-center">
+          <CheckCircle className="w-16 h-16 text-blue-400 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-white mb-3">Complete Your Profile</h2>
+          <p className="text-gray-300 mb-6">
+            To start bidding on tenders and managing contracts, you need to complete your contractor profile setup.
+          </p>
+          <a
+            href="/onboarding"
+            className="inline-block w-full px-6 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-semibold rounded-lg transition-all"
+          >
+            Start Onboarding
+          </a>
+        </div>
+      </div>
+    );
+  }
 
   const getStatusColor = (status: string) => {
     switch (status) {

@@ -23,6 +23,7 @@ export default function Contracts() {
   const [loading, setLoading] = useState(true);
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [contractorId, setContractorId] = useState<string | null>(null);
+  const [hasProfile, setHasProfile] = useState(true);
   const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [showMilestoneForm, setShowMilestoneForm] = useState(false);
@@ -48,14 +49,18 @@ export default function Contracts() {
         .eq('user_id', user.id)
         .maybeSingle();
 
-      if (profileError) throw profileError;
+      if (profileError && profileError.code !== 'PGRST116') {
+        throw profileError;
+      }
 
-      // If no profile exists, redirect to onboarding
+      // If no profile exists, show onboarding prompt
       if (!profileData) {
-        window.location.href = '/onboarding';
+        setHasProfile(false);
+        setLoading(false);
         return;
       }
 
+      setHasProfile(true);
       setContractorId(profileData.id);
 
       // Get contracts
@@ -129,6 +134,26 @@ export default function Contracts() {
         <div className="text-center">
           <Loader className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
           <p className="text-gray-600">Loading your contracts...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!hasProfile) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-lg shadow-xl p-8 max-w-md w-full text-center">
+          <FileText className="w-16 h-16 text-blue-600 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-800 mb-3">Complete Your Profile First</h2>
+          <p className="text-gray-600 mb-6">
+            You need to complete your contractor onboarding before you can create contracts.
+          </p>
+          <a
+            href="/onboarding"
+            className="inline-block w-full px-6 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-semibold rounded-lg transition-all"
+          >
+            Go to Onboarding
+          </a>
         </div>
       </div>
     );

@@ -31,6 +31,7 @@ export default function ComplianceVault() {
   const [deleting, setDeleting] = useState<string | null>(null);
   const [documents, setDocuments] = useState<ComplianceDocument[]>([]);
   const [contractorId, setContractorId] = useState<string | null>(null);
+  const [hasProfile, setHasProfile] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
